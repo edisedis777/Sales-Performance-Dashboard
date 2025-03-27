@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sales Performance Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.2/d3.min.js"></script>
+    <style>
+      :root {
+        --primary-color: #2c3e50;
+        --secondary-color: #3498db;
+        --accent-color: #e74c3c;
+        --light-color: #ecf0f1;
+        --dark-color: #34495e;
+        --success-color: #2ecc71;
+        --warning-color: #f39c12;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      body {
+        background-color: #f5f7fa;
+        color: #333;
+        line-height: 1.6;
+      }
+
+      .dashboard {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .header h1 {
+        color: var(--primary-color);
+        font-size: 28px;
+      }
+
+      .date-picker {
+        display: flex;
+        gap: 10px;
+      }
+
+      .date-picker select,
+      .date-picker button {
+        padding: 8px 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: white;
+      }
+
+      .date-picker button {
+        background-color: var(--secondary-color);
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .date-picker button:hover {
+        background-color: var(--primary-color);
+      }
+
+      .dashboard-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .card-title {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 10px;
+      }
+
+      .card-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--primary-color);
+      }
+
+      .card-change {
+        display: flex;
+        align-items: center;
+        font-size: 12px;
+        margin-top: 5px;
+      }
+
+      .card-positive {
+        color: var(--success-color);
+      }
+
+      .card-negative {
+        color: var(--accent-color);
+      }
+
+      .dashboard-charts {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .chart-container {
+        background-color: white;
+        border-radius: 2px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        height: 350px; /* Reduced from 400px to give more control */
+        display: flex;
+        flex-direction: column;
+      }
+
+      .chart-title {
+        font-size: 14px;
+        color: var(--primary-color);
+        margin-bottom: 10px;
+        text-align: center;
+      }
+
+      canvas {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .table-container {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      thead th {
+        background-color: var(--light-color);
+        padding: 12px 15px;
+        text-align: left;
+        color: var(--primary-color);
+        font-weight: bold;
+        position: sticky;
+        top: 0;
+      }
+
+      tbody td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      tbody tr:hover {
+        background-color: #f9f9f9;
+      }
+
+      .loader {
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid var(--secondary-color);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 2s linear infinite;
+        margin: 100px auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (max-width: 1200px) {
+        .dashboard-cards {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .dashboard-charts {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .dashboard-cards {
+          grid-template-columns: 1fr;
+        }
+
+        .header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+
+        .date-picker {
+          width: 100%;
+          flex-wrap: wrap;
+        }
+      }
+
+      .tooltip {
+        position: absolute;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        pointer-events: none;
+        font-size: 14px;
+        z-index: 1000;
+      }
+
+      .donut-chart-container {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        flex-grow: 1;
+      }
+
+      .donut-center-text {
+        position: absolute;
+        text-align: center;
+        font-size: 14px;
+        color: #444;
+      }
+
+      .donut-center-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--primary-color);
+      }
+
+      .legend {
+        margin-top: 5px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-right: 10px;
+        font-size: 12px;
+      }
+
+      .legend-color {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        margin-right: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dashboard">
+      <div class="header">
+        <h1>Sales Performance Dashboard</h1>
+        <div class="date-picker">
+          <select id="year-filter">
+            <option value="all">All Years</option>
+          </select>
+          <select id="product-filter">
+            <option value="all">All Products</option>
+          </select>
+          <button id="reset-filters">Reset Filters</button>
+        </div>
+      </div>
+
+      <div id="loading" class="loader"></div>
+
+      <div id="dashboard-content" style="display: none">
+        <div class="dashboard-cards">
+          <div class="card">
+            <div class="card-title">Total Revenue</div>
+            <div class="card-value" id="total-revenue">€0</div>
+            <div class="card-change card-positive">
+              <span id="revenue-change">0%</span> vs. Previous Period
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Number of Sales</div>
+            <div class="card-value" id="total-sales">0</div>
+            <div class="card-change card-positive">
+              <span id="sales-change">0%</span> vs. Previous Period
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Average Order Value</div>
+            <div class="card-value" id="avg-order">€0</div>
+            <div class="card-change card-negative">
+              <span id="avg-change">0%</span> vs. Previous Period
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Total Tax Collected</div>
+            <div class="card-value" id="total-tax">€0</div>
+            <div class="card-change card-positive">
+              <span id="tax-change">0%</span> vs. Previous Period
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-charts">
+          <div class="chart-container">
+            <div class="chart-title">Sales by Product Type</div>
+            <canvas id="product-chart"></canvas>
+          </div>
+          <div class="chart-container">
+            <div class="chart-title">Customer Gender Distribution</div>
+            <div class="donut-chart-container">
+              <canvas id="gender-chart"></canvas>
+              <div class="donut-center-text">
+                <div>Total Customers</div>
+                <div class="donut-center-value" id="total-customers">0</div>
+              </div>
+            </div>
+            <div class="legend" id="gender-legend"></div>
+          </div>
+          <div class="chart-container">
+            <div class="chart-title">Sales Trend by Month</div>
+            <canvas id="trend-chart"></canvas>
+          </div>
+          <div class="chart-container">
+            <div class="chart-title">Tax Rate Distribution</div>
+            <canvas id="tax-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <h2 class="chart-title">Top 10 Customers by Revenue</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Customer Name</th>
+                <th>Email</th>
+                <th>City</th>
+                <th>Purchase Type</th>
+                <th>Quantity</th>
+                <th>Total Amount</th>
+              </tr>
+            </thead>
+            <tbody id="customers-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let salesData = [];
+      let filteredData = [];
+
+      const formatCurrency = (value) => {
+        return (
+          "€" +
+          value.toLocaleString("de-DE", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+        );
+      };
+
+      const formatPercentage = (value) => {
+        return (
+          value.toLocaleString("de-DE", {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          }) + "%"
+        );
+      };
+
+      const parseDate = (dateStr) => {
+        if (!dateStr) return null;
+        const parts = dateStr.split("-");
+        if (parts.length !== 3) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+      };
+
+      const getMonthName = (date) => {
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+        return months[date.getMonth()];
+      };
+
+      const calculateAgeGroup = (birthday) => {
+        if (!birthday) return "Unknown";
+        const birthDate = parseDate(birthday);
+        if (!birthDate) return "Unknown";
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+          age--;
+        }
+        if (age < 25) return "Under 25";
+        if (age < 35) return "25-34";
+        if (age < 45) return "35-44";
+        if (age < 55) return "45-54";
+        if (age < 65) return "55-64";
+        return "65+";
+      };
+
+      const getRandomChange = () => {
+        return (Math.random() * 15 - 5).toFixed(1);
+      };
+
+      let productChart;
+      let genderChart;
+      let trendChart;
+      let taxChart;
+
+      async function loadData() {
+        try {
+          const response = await fetch("random_data_100.xlsx");
+          if (!response.ok) throw new Error("Network response was not ok");
+          const arrayBuffer = await response.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, {
+            cellDates: true,
+            cellNF: true,
+            cellStyles: true,
+            type: "array",
+          });
+
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          salesData = XLSX.utils.sheet_to_json(worksheet);
+
+          salesData.forEach((row) => {
+            if (row.Birthday && typeof row.Birthday === "string") {
+              row.BirthdayDate = parseDate(row.Birthday);
+              row.AgeGroup = calculateAgeGroup(row.Birthday);
+            }
+            if (row.AddressZipCity) {
+              const zipCity = row.AddressZipCity.split(" ");
+              row.ZipCode = zipCity[0];
+              row.City = zipCity.slice(1).join(" ");
+            }
+            row.TaxPercentage = row.SalesTax * 100;
+          });
+
+          initializeFilters();
+          applyFilters();
+
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("dashboard-content").style.display = "block";
+        } catch (error) {
+          console.error("Error loading data:", error);
+          document.getElementById("loading").style.display = "none";
+          alert("Error loading data. Please check the console for details.");
+        }
+      }
+
+      function initializeFilters() {
+        const years = [
+          ...new Set(
+            salesData
+              .filter((row) => row.BirthdayDate)
+              .map((row) => row.BirthdayDate.getFullYear())
+          ),
+        ].sort();
+        const yearFilter = document.getElementById("year-filter");
+        years.forEach((year) => {
+          const option = document.createElement("option");
+          option.value = year;
+          option.textContent = year;
+          yearFilter.appendChild(option);
+        });
+
+        const products = [
+          ...new Set(salesData.map((row) => row.PurchaseType)),
+        ].sort();
+        const productFilter = document.getElementById("product-filter");
+        products.forEach((product) => {
+          const option = document.createElement("option");
+          option.value = product;
+          option.textContent = product;
+          productFilter.appendChild(option);
+        });
+
+        yearFilter.addEventListener("change", applyFilters);
+        productFilter.addEventListener("change", applyFilters);
+        document
+          .getElementById("reset-filters")
+          .addEventListener("click", resetFilters);
+      }
+
+      function applyFilters() {
+        const yearFilter = document.getElementById("year-filter").value;
+        const productFilter = document.getElementById("product-filter").value;
+
+        filteredData = salesData.filter((row) => {
+          if (
+            yearFilter !== "all" &&
+            (!row.BirthdayDate || row.BirthdayDate.getFullYear() != yearFilter)
+          ) {
+            return false;
+          }
+          if (productFilter !== "all" && row.PurchaseType !== productFilter) {
+            return false;
+          }
+          return true;
+        });
+
+        updateDashboard();
+      }
+
+      function resetFilters() {
+        document.getElementById("year-filter").value = "all";
+        document.getElementById("product-filter").value = "all";
+        applyFilters();
+      }
+
+      function updateDashboard() {
+        updateSummaryCards();
+        updateProductChart();
+        updateGenderChart();
+        updateTrendChart();
+        updateTaxChart();
+        updateCustomersTable();
+      }
+
+      function updateSummaryCards() {
+        const totalRevenue = filteredData.reduce(
+          (sum, row) => sum + row.TotalAmount,
+          0
+        );
+        const totalSales = filteredData.length;
+        const avgOrder = totalSales > 0 ? totalRevenue / totalSales : 0;
+        const totalTax = filteredData.reduce(
+          (sum, row) => sum + row.TaxAmount,
+          0
+        );
+
+        document.getElementById("total-revenue").textContent =
+          formatCurrency(totalRevenue);
+        document.getElementById("total-sales").textContent = totalSales;
+        document.getElementById("avg-order").textContent =
+          formatCurrency(avgOrder);
+        document.getElementById("total-tax").textContent =
+          formatCurrency(totalTax);
+
+        document.getElementById("revenue-change").textContent =
+          getRandomChange() + "%";
+        document.getElementById("sales-change").textContent =
+          getRandomChange() + "%";
+        document.getElementById("avg-change").textContent =
+          getRandomChange() + "%";
+        document.getElementById("tax-change").textContent =
+          getRandomChange() + "%";
+
+        document.getElementById("total-customers").textContent = totalSales;
+
+        const revenueChange = parseFloat(
+          document.getElementById("revenue-change").textContent
+        );
+        const salesChange = parseFloat(
+          document.getElementById("sales-change").textContent
+        );
+        const avgChange = parseFloat(
+          document.getElementById("avg-change").textContent
+        );
+        const taxChange = parseFloat(
+          document.getElementById("tax-change").textContent
+        );
+
+        document.getElementById("revenue-change").parentElement.className =
+          "card-change " +
+          (revenueChange >= 0 ? "card-positive" : "card-negative");
+        document.getElementById("sales-change").parentElement.className =
+          "card-change " +
+          (salesChange >= 0 ? "card-positive" : "card-negative");
+        document.getElementById("avg-change").parentElement.className =
+          "card-change " + (avgChange >= 0 ? "card-positive" : "card-negative");
+        document.getElementById("tax-change").parentElement.className =
+          "card-change " + (taxChange >= 0 ? "card-positive" : "card-negative");
+      }
+
+      function updateProductChart() {
+        const productData = {};
+        filteredData.forEach((row) => {
+          if (!productData[row.PurchaseType]) productData[row.PurchaseType] = 0;
+          productData[row.PurchaseType] += row.TotalAmount;
+        });
+
+        const sortedProducts = Object.entries(productData)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10);
+
+        const labels = sortedProducts.map((item) => item[0]);
+        const values = sortedProducts.map((item) => item[1]);
+
+        const ctx = document.getElementById("product-chart").getContext("2d");
+        if (productChart) productChart.destroy();
+
+        productChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Revenue",
+                data: values,
+                backgroundColor: "#3498db",
+                borderColor: "#2980b9",
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    return formatCurrency(context.raw);
+                  },
+                },
+              },
+            },
+            scales: {
+              x: {
+                ticks: {
+                  maxRotation: 45,
+                  minRotation: 45,
+                  font: { size: 10 },
+                  padding: 5,
+                },
+              },
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function (value) {
+                    return formatCurrency(value);
+                  },
+                  font: { size: 10 },
+                  padding: 5,
+                },
+              },
+            },
+            layout: {
+              padding: {
+                bottom: 10, // Reduced padding to fit
+              },
+            },
+          },
+        });
+      }
+
+      function updateGenderChart() {
+        const genderData = { Frau: 0, Herr: 0 };
+        filteredData.forEach((row) => {
+          if (row.Salutation in genderData) genderData[row.Salutation]++;
+        });
+
+        const labels = Object.keys(genderData);
+        const values = Object.values(genderData);
+
+        const ctx = document.getElementById("gender-chart").getContext("2d");
+        if (genderChart) genderChart.destroy();
+
+        const colors = ["#FF6B6B", "#4D96FF"];
+
+        genderChart = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                data: values,
+                backgroundColor: colors,
+                borderColor: "white",
+                borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "70%",
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const label = context.label || "";
+                    const value = context.raw || 0;
+                    const percentage = (
+                      (value / filteredData.length) *
+                      100
+                    ).toFixed(1);
+                    return `${label}: ${value} (${percentage}%)`;
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const legend = document.getElementById("gender-legend");
+        legend.innerHTML = "";
+        labels.forEach((label, index) => {
+          const item = document.createElement("div");
+          item.className = "legend-item";
+          const colorBox = document.createElement("div");
+          colorBox.className = "legend-color";
+          colorBox.style.backgroundColor = colors[index];
+          const text = document.createElement("div");
+          text.textContent = `${label}: ${values[index]} (${(
+            (values[index] / filteredData.length) *
+            100
+          ).toFixed(1)}%)`;
+          item.appendChild(colorBox);
+          item.appendChild(text);
+          legend.appendChild(item);
+        });
+      }
+
+      function updateTrendChart() {
+        const monthlyData = {};
+        filteredData.forEach((row) => {
+          const birthDate = row.BirthdayDate;
+          if (!birthDate) return;
+          const month = getMonthName(birthDate);
+          if (!monthlyData[month]) {
+            monthlyData[month] = { sales: 0, revenue: 0 };
+          }
+          monthlyData[month].sales++;
+          monthlyData[month].revenue += row.TotalAmount;
+        });
+
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+        const orderedMonths = months.filter((month) => monthlyData[month]);
+        const salesData = orderedMonths.map(
+          (month) => monthlyData[month].sales
+        );
+        const revenueData = orderedMonths.map(
+          (month) => monthlyData[month].revenue
+        );
+
+        const ctx = document.getElementById("trend-chart").getContext("2d");
+        if (trendChart) trendChart.destroy();
+
+        trendChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: orderedMonths,
+            datasets: [
+              {
+                label: "Revenue",
+                data: revenueData,
+                backgroundColor: "rgba(52, 152, 219, 0.2)",
+                borderColor: "rgba(52, 152, 219, 1)",
+                borderWidth: 2,
+                fill: true,
+                tension: 0.2,
+                yAxisID: "y",
+              },
+              {
+                label: "Number of Sales",
+                data: salesData,
+                backgroundColor: "rgba(231, 76, 60, 0.2)",
+                borderColor: "rgba(231, 76, 60, 1)",
+                borderWidth: 2,
+                fill: true,
+                tension: 0.2,
+                yAxisID: "y1",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    if (context.dataset.label === "Revenue") {
+                      return `Revenue: ${formatCurrency(context.raw)}`;
+                    } else {
+                      return `Sales: ${context.raw}`;
+                    }
+                  },
+                },
+              },
+              legend: {
+                position: "top",
+                labels: { font: { size: 10 } },
+              },
+            },
+            scales: {
+              x: {
+                ticks: { font: { size: 10 }, padding: 5 },
+              },
+              y: {
+                type: "linear",
+                display: true,
+                position: "left",
+                title: {
+                  display: true,
+                  text: "Revenue",
+                  font: { size: 10 },
+                  padding: 5,
+                },
+                ticks: {
+                  callback: function (value) {
+                    return formatCurrency(value);
+                  },
+                  font: { size: 10 },
+                  padding: 5,
+                },
+              },
+              y1: {
+                type: "linear",
+                display: true,
+                position: "right",
+                title: {
+                  display: true,
+                  text: "Sales",
+                  font: { size: 10 },
+                  padding: 5,
+                },
+                ticks: {
+                  font: { size: 10 },
+                  padding: 5,
+                },
+                grid: { drawOnChartArea: false },
+              },
+            },
+            layout: {
+              padding: {
+                top: 10,
+                bottom: 10, // Reduced padding
+              },
+            },
+          },
+        });
+      }
+
+      function updateTaxChart() {
+        const taxData = {};
+        filteredData.forEach((row) => {
+          const taxRate = row.TaxPercentage;
+          if (!taxData[taxRate]) taxData[taxRate] = 0;
+          taxData[taxRate] += row.TaxAmount;
+        });
+
+        const labels = Object.keys(taxData).map((rate) => rate + "%");
+        const values = Object.values(taxData);
+
+        const ctx = document.getElementById("tax-chart").getContext("2d");
+        if (taxChart) taxChart.destroy();
+
+        const colors = [
+          "#1abc9c",
+          "#2ecc71",
+          "#3498db",
+          "#9b59b6",
+          "#f1c40f",
+          "#e67e22",
+          "#e74c3c",
+          "#34495e",
+          "#16a085",
+          "#27ae60",
+        ];
+
+        taxChart = new Chart(ctx, {
+          type: "pie",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                data: values,
+                backgroundColor: colors,
+                borderColor: "white",
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "bottom",
+                labels: { font: { size: 10 }, padding: 5 },
+              },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const label = context.label || "";
+                    const value = context.raw || 0;
+                    const total = context.dataset.data.reduce(
+                      (a, b) => a + b,
+                      0
+                    );
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    return `${label}: ${formatCurrency(
+                      value
+                    )} (${percentage}%)`;
+                  },
+                },
+              },
+            },
+            layout: {
+              padding: {
+                bottom: 10, // Reduced padding
+              },
+            },
+          },
+        });
+      }
+
+      function updateCustomersTable() {
+        const customerData = {};
+        filteredData.forEach((row) => {
+          const id = row.UniqueID || "unknown";
+          if (!customerData[id]) {
+            customerData[id] = {
+              name: `${row.FirstName} ${row.LastName}`,
+              email: row.Email || "N/A",
+              city: row.City || "N/A",
+              purchaseType: row.PurchaseType || "N/A",
+              quantity: 0,
+              amount: 0,
+            };
+          }
+          customerData[id].quantity++;
+          customerData[id].amount += row.TotalAmount;
+        });
+
+        const topCustomers = Object.values(customerData)
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, 10);
+
+        const tableBody = document.getElementById("customers-table");
+        tableBody.innerHTML = "";
+        topCustomers.forEach((customer) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+                    <td>${customer.name}</td>
+                    <td>${customer.email}</td>
+                    <td>${customer.city}</td>
+                    <td>${customer.purchaseType}</td>
+                    <td>${customer.quantity}</td>
+                    <td>${formatCurrency(customer.amount)}</td>
+                `;
+          tableBody.appendChild(row);
+        });
+      }
+
+      window.addEventListener("load", loadData);
+    </script>
+  </body>
+</html>
