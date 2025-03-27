@@ -4,7 +4,7 @@
 
 ## Overview
 
-This Sales Performance Dashboard is a web-based visualization tool designed to provide in-depth insights into sales data. Built with modern web technologies, the dashboard offers a dynamic and interactive way to analyze sales performance across various dimensions.
+This Sales Performance Dashboard is a web-based visualization designed to provide in-depth insights into sales data. Built with modern web technologies, the dashboard offers a dynamic and interactive way to analyze sales performance across various dimensions.
 
 ## 🌟 Features
 
