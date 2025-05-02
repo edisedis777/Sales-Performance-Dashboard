@@ -4,8 +4,6 @@
 [![HTML](https://img.shields.io/badge/HTML-%23E34F26.svg?logo=html5&logoColor=white)](#)
 [![CSS](https://img.shields.io/badge/CSS-1572B6?logo=css3&logoColor=fff)](#)
 [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=000)](#)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
 
 ![Screenshot 2025-03-21 at 11 39 40](https://github.com/user-attachments/assets/50c98d00-6004-4cef-b54c-e699560185e5)
 
@@ -97,8 +95,4 @@ Contributions, issues, and feature requests are welcome!
 
 ## 📄 License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
-
----
-
-**Created with ❤️ for Analytics Enthusiasts**
+Distributed under the GNU Affero General Public License v3.0 License. See `LICENSE` for more information.
